@@ -83,7 +83,10 @@ async function loop() {
 
     // Detect face
     // TinyFaceDetectorOptions: inputSize, scoreThreshold
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+    const rawDetections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+
+    // Resize detections to match canvas size
+    const detections = rawDetections ? faceapi.resizeResults(rawDetections, { width: canvas.width, height: canvas.height }) : null;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
