@@ -1,6 +1,28 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('overlay');
 const ctx = canvas.getContext('2d');
+const uiLayer = document.getElementById('ui-layer');
+const yesBtn = document.getElementById('btn-yes');
+const noBtn = document.getElementById('btn-no');
+
+let gameState = 'playing'; // 'playing', 'yes', 'no'
+let stuckItems = [];
+
+// Event Listeners
+if (yesBtn) {
+    yesBtn.addEventListener('click', () => {
+        gameState = 'yes';
+        uiLayer.style.display = 'none';
+    });
+}
+
+if (noBtn) {
+    noBtn.addEventListener('click', () => {
+        gameState = 'no';
+        uiLayer.style.display = 'none';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+}
 
 const MODEL_URL = 'https://vladmandic.github.io/face-api/model/';
 
@@ -80,13 +102,7 @@ class Particle {
 
 async function loop() {
     if (!isModelLoaded) return;
-
-    // Detect face
-    // TinyFaceDetectorOptions: inputSize, scoreThreshold
-    const rawDetections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-
-    // Resize detections to match canvas size
-    const detections = rawDetections ? faceapi.resizeResults(rawDetections, { width: canvas.width, height: canvas.height }) : null;
+    if (gameState === 'no') return;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -96,34 +112,64 @@ async function loop() {
     ctx.scale(-1, 1);
     ctx.translate(-canvas.width, 0);
 
-    if (detections) {
-        const landmarks = detections.landmarks;
-        const nose = landmarks.getNose()[3]; // Tip of the nose
-
-        // Face width for scaling
-        const jawOutline = landmarks.getJawOutline();
-        const faceWidth = Math.abs(jawOutline[0].x - jawOutline[16].x);
-
-        const size = faceWidth * 0.8; // Cow size relative to face
-
-        // Draw Cow (centered on nose)
-        if (cowImg.complete) {
-            ctx.drawImage(cowImg, nose.x - size/2, nose.y - size/2, size, size);
+    if (gameState === 'yes') {
+        // Spawn new stuck items
+        const count = 5; // Add 5 per frame
+        for(let i=0; i<count; i++) {
+            stuckItems.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                img: Math.random() > 0.5 ? cowImg : heartImg,
+                size: Math.random() * 50 + 30,
+                rotation: Math.random() * Math.PI * 2
+            });
         }
 
-        // Emit particles
-        if (Math.random() < 0.3) { // 30% chance per frame
-            particles.push(new Particle(nose.x, nose.y));
+        // Draw all stuck items
+        for(let item of stuckItems) {
+            ctx.save();
+            ctx.translate(item.x, item.y);
+            ctx.rotate(item.rotation);
+            if (item.img.complete) {
+                ctx.drawImage(item.img, -item.size/2, -item.size/2, item.size, item.size);
+            }
+            ctx.restore();
         }
-    }
+    } else {
+        // Detect face
+        const rawDetections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
 
-    // Update and draw particles
-    // Particles are drawn in the mirrored context so they move correctly relative to the mirrored face
-    for (let i = particles.length - 1; i >= 0; i--) {
-        particles[i].update();
-        particles[i].draw(ctx);
-        if (particles[i].alpha <= 0) {
-            particles.splice(i, 1);
+        // Resize detections to match canvas size
+        const detections = rawDetections ? faceapi.resizeResults(rawDetections, { width: canvas.width, height: canvas.height }) : null;
+
+        if (detections) {
+            const landmarks = detections.landmarks;
+            const nose = landmarks.getNose()[3]; // Tip of the nose
+
+            // Face width for scaling
+            const jawOutline = landmarks.getJawOutline();
+            const faceWidth = Math.abs(jawOutline[0].x - jawOutline[16].x);
+
+            const size = faceWidth * 1.5; // Cow size relative to face
+
+            // Draw Cow (centered on nose)
+            if (cowImg.complete) {
+                ctx.drawImage(cowImg, nose.x - size/2, nose.y - size/2, size, size);
+            }
+
+            // Emit particles
+            if (Math.random() < 0.3) { // 30% chance per frame
+                particles.push(new Particle(nose.x, nose.y));
+            }
+        }
+
+        // Update and draw particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw(ctx);
+            if (particles[i].alpha <= 0) {
+                particles.splice(i, 1);
+            }
         }
     }
 
