@@ -59,3 +59,30 @@ body {
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
+
+#button-container {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    pointer-events: auto;
+}
+
+.valentine-btn {
+    font-family: 'Brush Script MT', cursive;
+    font-size: 2.5rem;
+    padding: 0.5rem 2rem;
+    border: none;
+    border-radius: 50px;
+    background-color: #ff1493;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255, 20, 147, 0.4);
+    transition: all 0.3s ease;
+}
+
+.valentine-btn:hover {
+    transform: scale(1.1);
+    background-color: #ff69b4;
+    box-shadow: 0 6px 20px rgba(255, 105, 180, 0.6);
+}
